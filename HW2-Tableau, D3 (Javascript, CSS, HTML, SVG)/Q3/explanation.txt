@@ -1,0 +1,2 @@
+When the y-axis values have either dramatical differences or tiny
+differences, we need to use nonlinear scales to balance the plot.

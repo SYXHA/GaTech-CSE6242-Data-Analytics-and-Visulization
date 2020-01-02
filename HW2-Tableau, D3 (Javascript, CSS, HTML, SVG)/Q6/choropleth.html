@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<style>
+    .states{
+        fill:none;
+        stroke: #fff;
+        stroke-linejoin:round;
+    }
+
+    text.mono{
+        font-size:10pt;
+        font-family:Consolas,courier;
+    }
+</style>
+<body>
+<div class="container" id="map"></div>
+    <script src="../lib/d3.v5.min.js"></script>
+    <script src="../lib/d3-dsv.min.js"></script>
+    <script src="../lib/d3-fetch.min.js"></script>
+    <script src="../lib/d3-tip.min.js"></script>
+    <script src="../lib/d3-scale-chromatic.v1.min.js"></script>
+    <script src="../lib/topojson.v2.min.js"></script>
+<script>
+    // set margin
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var margin = {top:150, right: 220, bottom: 70, left:100};
+    var innerWidth = width-margin.left-margin.right;
+    var innerHeight = height-margin.top-margin.bottom;
+
+
+    var svg = d3.select("#map").append("svg")
+        .attr("width", width)
+        .attr("height",height)
+        .append("g")
+
+    var earthquakes = d3.map();
+
+    var projection = d3.geoAlbersUsa()
+        .translate([width/2,height/2]);
+
+    var path = d3.geoPath()
+        .projection(projection);
+
+//    var x = d3.scaleLinear()
+//        .domain([1, 2500])
+//        .rangeRound([600, 860]);
+//
+//    var color = d3.scaleThreshold()
+//        .domain([1, 1000])
+//       .range([d3.interpolateReds(0.2),d3.interpolateReds(1)]);
+//       // .range(d3.schemeBlues[9]);
+//
+//    var g = svg.append("g")
+//        .attr("class", "key")
+//        .attr("transform", "translate(0,40)");
+//
+//    g.selectAll("rect")
+//        .data(color.range().map(function (d) {
+//            d = color.invertExtent(d);
+//            if (d[0] == null) d[0] = x.domain()[0];
+//            if (d[1] == null) d[1] = x.domain()[1];
+//            return d;
+//
+//        }))
+//        .enter().append("rect")
+//        .attr("height", 8)
+//        .attr("x", function (d) {
+//            return x(d[0]);
+//        })
+//        .attr("width", function (d) {
+//            return x(d[1]) - x(d[0]);
+//        })
+//        .attr("fill", function (d) {
+//            return color(d[0]);
+//        });
+//
+//    g.append("text")
+//        .attr("class", "caption")
+//        .attr("x", x.range()[0])
+//        .attr("y", -6)
+//        .attr("fill", "#000")
+//        .attr("text-anchor", "start")
+//        .attr("font-weight", "bold")
+//        .text("earth quake");
+//
+//    g.call(d3.axisBottom(x)
+//        .tickSize(13)
+//        .tickFormat(function (x, i) {
+//            return i ? x : x + "%";
+//        })
+//        .tickValues(color.domain()))
+//        .select(".domain")
+//        .remove();
+//
+
+    var promises = [
+        d3.json("./states-10m.json"),
+        d3.csv("state-earthquakes.csv", function (d){
+            earthquakes.set(d.States,{
+            totCount:+d["Total Earthquakes"],
+            region:d.Region});
+        })
+    ]
+
+    Promise.all(promises).then(ready)
+
+    function ready([us]) {
+        var maxCount = d3.max(d3.values(earthquakes), function(d){return d.totCount})
+
+        var tip = d3.tip()
+            .attr("class","d3-tip")
+            .offset([-8,0])
+            .html(function(d) {
+                region = earthquakes.get(d.properties.name).region
+                totCount = earthquakes.get(d.properties.name).totCount
+                return "State:"+d.properties.name+"Region:"+region+"Total Earthquakes:"+totCount;
+            })
+
+        // log color scale
+        var colorScale = d3.scaleLog()
+        .domain([1,maxCount])
+        .range([d3.interpolateReds(0.1),d3.interpolateReds(1)]);
+
+        svg.append("g")
+           .call(tip)
+           .attr("class","states")
+           .selectAll("path")
+           .data(topojson.feature(us,us.objects.states).features)
+           .enter().append("path")
+           .style("fill",function(d){
+                console.log(earthquakes)
+                if (earthquakes.has(d.properties.name)) {
+                    return colorScale(earthquakes.get(d.properties.name).totCount)
+                }
+            })
+           .attr("d",path)
+           .on('mouseover',tip.show)
+           .on('mouseout',tip.hide)
+
+        svg.append("path")
+           .datum(topojson.mesh(us,us.objects.states, function(a,b){return a!= b;}))
+           .attr("class","states")
+           .attr("d",path)
+
+           // create legend with 9 gradients
+           var log=d3.scaleLog()
+               .domain([1,5,10,50,100,200,500,750, 1000]).range([1,2,3,4,5,6,7,8,9]);
+           var color=d3.scaleThreshold().domain(d3.range(1,10)).range(d3.schemeReds[9]);
+
+           var legend = svg.selectAll("g.legend")
+			                     .data([1,5,10,50,100,200,500,750, 1000])
+			                     .enter()
+			                     .append("g")
+			                     .attr("class","legend");
+
+		     	legend.append("rect")
+      			  	.attr("x", margin.left + innerWidth + margin.right/1.5)
+      			  	.attr("y", function(d,i){return margin.top + 25*i;})
+      			  	.attr("width",20)
+      			  	.attr("height",20)
+      			  	.style("fill", function(d){ return color(log(d));})
+      				  .style("opacity", 0.8);
+
+          var legend_labels =[1,5,10,50,100,200,500,750, 1000] ;
+
+          legend.append("text")
+                .attr("x", margin.left + innerWidth + margin.right/5)
+                .attr("y", margin.top -25 )
+                .text("Earthquake Frequency");
+
+		    	legend.append("text")
+		        		.attr("x", margin.left + innerWidth + margin.right/2.55)
+			        	.attr("y", function(d,i){return margin.top+ 15 + 25*i;})
+			        	.text(function(d,i){return legend_labels[i];});
+    }
+
+</script>
+</body>
+</html>

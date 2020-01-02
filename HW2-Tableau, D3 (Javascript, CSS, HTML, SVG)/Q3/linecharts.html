@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script type= "text/javascript "src="../lib/d3.v5.min.js"></script>
+<style type ="text/css">
+    @media print {
+      .pagebreak {
+          clear: both;
+          page-break-after: always;
+      }
+    }
+
+    .line{
+    	fill: none;
+    	stroke: #ffab00;
+    	stroke-width:3; 
+    }
+    
+    .dot
+    {
+    	fill: none
+    	stroke: steelblue;
+    }
+    
+</style>
+
+<head>
+<body>
+<div id="chart1"></div>
+<div id="chart2"></div>
+<div id="chart3"></div>
+<div id="chart4"></div>
+
+<script type = "text/javascript">
+const svg = d3.select('svg');
+
+// set margins
+var margin = {top:50, right: 230, bottom:100, left:180},
+width = window.innerWidth -margin.left-margin.right,
+height = window.innerHeight - margin.top - margin.bottom;
+
+// year format
+var formatYear = d3.timeParse("%Y");
+
+// main function
+d3.dsv(",", "../Q3/earthquakes.csv", function(d){return {year: formatYear(d.year), yValue1 : +d["8.0+"], yValue2 : +d["7_7.9"], yValue3 : +d["6_6.9"],yValue4 : + d["5_5.9"], estimated_deaths : +d["Estimated Deaths"]};  }).then(function(data){
+
+    n = data.length;
+
+    // x scale
+    var xscale = d3.scaleTime()
+                   .domain([d3.min(data, d => d.year), d3.max(data, d => d.year)]) 
+                   .range([0,width]);
+    
+    // y scale
+    var yscale = d3.scaleLinear()
+                   .domain([0, d3.max(data, d => d.yValue4)])
+                   .range([height,0]);
+    
+    
+    // line generators
+    var line_yValue1= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){return yscale(d.yValue1);})
+    .curve(d3.curveMonotoneX);
+    
+    var line_yValue2= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){return yscale(d.yValue2);})
+    .curve(d3.curveMonotoneX);
+    
+    var line_yValue3= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){return yscale(d.yValue3);})
+    .curve(d3.curveMonotoneX);
+    
+    var line_yValue4= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){return yscale(d.yValue4);})
+    .curve(d3.curveMonotoneX);
+    
+
+    // legend information
+    var legend_keys =[{name: "5_5.9", color:"#FFC300"},{name: "6_6.9", color :"#FF5733"},  {name: "7_7.9", color: "#C70039"},{name: "8.0+",color: "#900C3F"} ];
+    
+    // chart 1
+    var chart1=d3.select("body")
+    .append("svg") 
+    .attr("width", width+margin.left+margin.right)
+    .attr("height", height +margin.top + margin.bottom).append("g")
+    .attr("transform", "translate(" +margin.left + "," + margin.top+ ")");
+
+    // add legend
+    linelegend = chart1.selectAll("rect")
+    .data(legend_keys)
+    .enter()
+    .append("g")
+    .attr("class","lineLegend")
+    .attr("transform", (d,i) => "translate(" +width +"," + (i*18) +")");
+
+    linelegend.append("text").text(d => d.name)
+              .attr("transform", "translate(25,10)"); 
+    
+    linelegend.append("rect")
+              .attr("fill", d => d.color )
+              .attr("width", 22)
+              .attr("height", 12);
+    
+    
+    // create paths 
+    chart1.append("path")
+    .attr("class","line")
+    .attr("d", line_yValue1(data))
+    .style("stroke","#900C3F");
+    
+    chart1.append("path")
+    .attr("class","line")
+    .attr("d", line_yValue2(data))
+    .style("stroke","#C70039");
+    
+    chart1.append("path")
+    .attr("class","line")
+    .attr("d", line_yValue3(data))
+    .style("stroke","#FF5733");
+    
+    chart1.append("path")
+    .attr("class","line")
+    .attr("d", line_yValue4(data))
+    .style("stroke","#FFC300");
+    
+    
+    // add x axis
+    chart1.append("g")
+    .attr("transform", "translate(0," +height +")")
+    .call(d3.axisBottom(xscale));
+    
+    chart1.append("text")
+    .attr('class','axis-label')
+    .attr('fill','black')
+    .attr("transform",   "translate("+ (width/2)+"," + (height +margin.top -10) +")")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Year");
+    
+    // add y axis
+    chart1.append("g")
+    .call(d3.axisLeft(yscale));
+    
+    chart1.append("text")
+    .attr('class','axis-label')
+    .attr("transform", "rotate(-90)")
+    .attr("y", 80 - margin.left)
+    .attr('fill','black')
+    .attr("x", 10-(height/2))
+    .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Num of Earthquakes");
+    
+    
+    // add title
+    chart1.append("text")
+    .attr("x", (width/2))
+    .attr("y", 0)
+    .style("text-anchor","middle")
+    .text("Worldwide Earthquake stats 2000-2015");
+
+    
+    // circle scale
+    var rscale=d3.scaleLinear()
+    .domain([d3.min(data, d => d.estimated_deaths),d3.max(data, d => d.estimated_deaths)])
+    .range([4,15]);
+    
+    // chart 2 
+    var chart2=d3.select("body").append("svg") 
+    .attr("width", width+margin.left+margin.right)
+    .attr("height", height +margin.top + margin.bottom).append("g")
+    .attr("transform", "translate(" +margin.left + "," + margin.top+ ")");
+        
+    // add legend
+    linelegend = chart2.selectAll("rect")
+    .data(legend_keys)
+    .enter()
+    .append("g")
+    .attr("class","lineLegend")
+    .attr("transform", (d,i) => "translate(" +width +"," + (i*18) +")");
+
+    linelegend.append("text").text(d => d.name)
+              .attr("transform", "translate(25,10)"); 
+    
+    linelegend.append("rect")
+              .attr("fill", d => d.color )
+              .attr("width", 22)
+              .attr("height", 12);
+    
+   
+    // plot lines and circles
+    chart2.append("path")
+    .data(data)
+    .attr("class","line")
+    .attr("d", line_yValue1(data))
+    .style("stroke","#900C3F");
+
+    chart2.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue1))
+    .style("fill","#900C3F");
+    
+    chart2.append("path")
+    .data(data)
+    .attr("class","line")
+    .attr("d", line_yValue2(data))
+    .style("stroke","#C70039");
+    
+    chart2.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue2))
+    .style("fill","#C70039");
+    
+    chart2.append("path")
+    .attr("class","line")
+    .data(data)
+    .attr("d", line_yValue3(data))
+    .style("stroke","#FF5733");
+    
+    chart2.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue3))
+    .style("fill","#FF5733");
+    
+    chart2.append("path")
+    .attr("class","line")
+    .data(data)
+    .attr("d", line_yValue4(data));
+    
+    chart2.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue4))
+    .style("fill","#FFC300");
+    
+      
+
+    // add x axis
+    chart2.append("g")
+    .attr("transform", "translate(0," +height +")")
+    .call(d3.axisBottom(xscale));
+    
+    chart2.append("text")
+    .attr('class','axis-label')
+    .attr('fill','black')
+    .attr("transform",   "translate("+ (width/2)+"," + (height +margin.top -10) +")")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Year");
+    
+    // add y axis
+    chart2.append("g")
+    .call(d3.axisLeft(yscale));
+    
+    chart2.append("text")
+    .attr('class','axis-label')
+    .attr("transform", "rotate(-90)")
+    .attr("y", 80 - margin.left)
+    .attr('fill','black')
+    .attr("x", 10-(height/2))
+    .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Num of Earthquakes");
+    
+
+    // add title
+    chart2.append("text")
+    .attr("x", (width/2))
+    .attr("y", -15)
+    .style("text-anchor","middle")
+    .text("Worldwide Earthquake stats 2000-2015 with Symbols");
+    
+    
+    // chart3
+    var chart3=d3.select("body").append("svg") 
+    .attr("width", width+margin.left+margin.right)
+    .attr("height", height +margin.top + margin.bottom).append("g")
+    .attr("transform", "translate(" +margin.left + "," + margin.top+ ")");
+
+    // new yscale
+    var yscale = d3.scaleSqrt()
+    .domain([0, d3.max(data, d =>  d.yValue4)])
+    .range([height,0]);
+
+    // add legend
+    linelegend = chart3.selectAll("rect")
+    .data(legend_keys)
+    .enter()
+    .append("g")
+    .attr("class","lineLegend")
+    .attr("transform", (d,i) => "translate(" +width +"," + (i*18) +")");
+
+    linelegend.append("text").text(d => d.name)
+              .attr("transform", "translate(25,10)"); 
+    
+    linelegend.append("rect")
+              .attr("fill", d => d.color )
+              .attr("width", 22)
+              .attr("height", 12);
+    
+   
+    // plot lines and circles
+    chart3.append("path")
+    .data(data)
+    .attr("class","line")
+    .attr("d", line_yValue1(data))
+    .style("stroke","#900C3F");
+
+    chart3.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue1))
+    .style("fill","#900C3F");
+    
+    chart3.append("path")
+    .data(data)
+    .attr("class","line")
+    .attr("d", line_yValue2(data))
+    .style("stroke","#C70039");
+    
+    chart3.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue2))
+    .style("fill","#C70039");
+    
+    chart3.append("path")
+    .attr("class","line")
+    .data(data)
+    .attr("d", line_yValue3(data))
+    .style("stroke","#FF5733");
+    
+    chart3.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue3))
+    .style("fill","#FF5733");
+    
+    chart3.append("path")
+    .attr("class","line")
+    .data(data)
+    .attr("d", line_yValue4(data));
+    
+    chart3.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue4))
+    .style("fill","#FFC300");
+    
+      
+
+    // add x axis
+    chart3.append("g")
+    .attr("transform", "translate(0," +height +")")
+    .call(d3.axisBottom(xscale));
+    
+    chart3.append("text")
+    .attr('class','axis-label')
+    .attr('fill','black')
+    .attr("transform",   "translate("+ (width/2)+"," + (height +margin.top -10) +")")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Year");
+    
+    // add y axis
+    chart3.append("g")
+    .call(d3.axisLeft(yscale));
+    
+    chart3.append("text")
+    .attr('class','axis-label')
+    .attr("transform", "rotate(-90)")
+    .attr("y", 80 - margin.left)
+    .attr('fill','black')
+    .attr("x", 10-(height/2))
+    .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Num of Earthquakes");
+    
+    // add title
+    chart3.append("text")
+    .attr("x", (width/2))
+    .attr("y", -15)
+    .style("text-anchor","middle")
+    .text("Worldwide Earthquake stats 2000-2015 Square Root Scale");
+    
+    
+    // chart4  
+    var chart4=d3.select("body").append("svg") // for the forth graph
+    .attr("width", width+margin.left+margin.right)
+    .attr("height", height +margin.top + margin.bottom).append("g")
+    .attr("transform", "translate(" +margin.left + "," + margin.top+ ")");
+    
+    // log y scale
+    var yscale = d3.scaleLog()
+    .domain([1, d3.max(data, d => d.yValue4)])
+    .range([height,0]);
+    
+    // adjusted y values 
+    var line_yValue1= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){
+                    if (d.yValue1==0){
+                     return height;
+                    }else{
+                      return yscale(d.yValue1)
+                    }
+                })
+    .curve(d3.curveMonotoneX);
+    
+    
+    var line_yValue2= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){
+                    if (d.yValue2==0){
+                     return height;
+                    }else{
+                      return yscale(d.yValue2)
+                    }
+                })
+    .curve(d3.curveMonotoneX);
+    
+    var line_yValue3= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){
+                    if (d.yValue3==0){
+                     return height;
+                    }else{
+                      return yscale(d.yValue3)
+                    }
+                })
+    .curve(d3.curveMonotoneX);
+    
+    var line_yValue4= d3.line()
+    .x(function(d){return xscale(d.year);})
+    .y(function(d){
+                    if (d.yValue4==0){
+                     return height;
+                    }else{
+                      return yscale(d.yValue4)
+                    }
+                })
+    .curve(d3.curveMonotoneX);
+    
+    
+    // add legend
+    linelegend = chart4.selectAll("rect")
+    .data(legend_keys)
+    .enter()
+    .append("g")
+    .attr("class","lineLegend")
+    .attr("transform", (d,i) => "translate(" + (width+10) +"," + (i*18) +")");
+
+    linelegend.append("text").text(d => d.name)
+              .attr("transform", "translate(25,10)"); 
+    
+    linelegend.append("rect")
+              .attr("fill", d => d.color )
+              .attr("width", 22)
+              .attr("height", 12);
+    
+    
+    
+    // plot lines and circles
+    chart4.append("path")
+    .data(data)
+    .attr("class","line")
+    .attr("d", line_yValue1(data))
+    .style("stroke","#900C3F");
+
+    chart4.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", function(d){
+      if (d.yValue1 == 0) {
+          return height;
+      } else {
+      return yscale(d.yValue1);}
+      })
+    .style("fill","#900C3F");
+    
+    
+    chart4.append("path")
+    .data(data)
+    .attr("class","line")
+    .attr("d", line_yValue2(data))
+    .style("stroke","#C70039");
+    
+    chart4.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue2))
+    .style("fill","#C70039");
+    
+    chart4.append("path")
+    .attr("class","line")
+    .data(data)
+    .attr("d", line_yValue3(data))
+    .style("stroke","#FF5733");
+    
+    chart4.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r", d =>rscale(d.estimated_deaths))
+    .attr("cx", d =>  xscale(d.year))
+    .attr("cy", d => yscale(d.yValue3))
+    .style("fill","#FF5733");
+    
+    
+    chart4.append("path")
+    .attr("class","line")
+    .data(data)
+    .attr("d", line_yValue4(data));
+    
+    chart4.selectAll("line-circle")
+    .data(data)
+    .enter().append("circle")
+    .attr("class","data-circle")
+    .attr("r",function(d){return rscale(d.estimated_deaths);})
+    .attr("cx", function(d) {return xscale(d.year);})
+    .attr("cy", function(d){
+      if (d.yValue4 == 0) {
+          return height;
+      } else {
+      return yscale(d.yValue4);}
+      })
+    .style("fill","#FFC300");
+    
+
+    // add x axis
+    chart4.append("g")
+    .attr("transform", "translate(0," +height +")")
+    .call(d3.axisBottom(xscale));
+    
+    chart4.append("text")
+    .attr('class','axis-label')
+    .attr('fill','black')
+    .attr("transform",   "translate("+ (width/2)+"," + (height +margin.top -10) +")")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Year");
+    
+    // add y axis
+    chart4.append("g")
+    .call(d3.axisLeft(yscale));
+    
+    chart4.append("text")
+    .attr('class','axis-label')
+    .attr("transform", "rotate(-90)")
+    .attr("y", 80 - margin.left)
+    .attr('fill','black')
+    .attr("x", 10-(height/2))
+    .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .style("font-size","1em")
+    .text("Num of Earthquakes");
+    
+    
+    //Add a title
+    
+    chart4.append("text")
+    .attr("x", (width/2))
+    .attr("y", -15)
+    .style("text-anchor","middle")
+    .text("Worldwide Earthquake stats 2000-2015 Log Scale");
+    
+});
+
+
+</script>
+</body>
+
+
+</html>
+
+
+
+
+

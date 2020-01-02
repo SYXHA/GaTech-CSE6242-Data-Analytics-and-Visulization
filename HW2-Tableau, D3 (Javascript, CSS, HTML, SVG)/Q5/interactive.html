@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<script type= "text/javascript "src="../lib/d3.v5.min.js"></script>
+<style type ="text/css">
+
+	.line{
+		fill: none;
+		stroke: #ffab00;
+		stroke-width:2; 
+	}
+
+	.title{
+	font-size: 18px;
+	text-anchor: middle;
+	text-align: center;
+  }
+
+</style>
+</head>
+<body>
+<div class= "title">US Earthquakes by Region 2010-2015</div>
+<script type = "text/javascript">
+
+var margin = {top:50, right: 250, bottom:50, left:250},
+width = window.innerWidth - margin.left - margin.right,
+height =( window.innerHeight - margin.top - margin.bottom)/2.5 ;
+
+
+var timeFormat = d3.timeParse("%Y");
+
+var xscale=d3.scaleTime().range([0,width]);
+var yscale=d3.scaleLinear().range([height,0]);
+
+var colors = ["green", "purple", "blue","red"];
+
+var legend_keys =[{key: "South", color: "green"}, {key: "West", color: "purple"}, {key: "Northeast", color: "blue"}, {key: "Midwest", color: "red"}];
+
+
+var svg=d3.select("body").append("svg") 
+.attr("width", width+margin.left+margin.right)
+.attr("height", height +margin.top + margin.bottom).append("g")
+.attr("transform", "translate(" +margin.left + "," + margin.top+ ")");
+
+var svg1=d3.select("body").append("svg") 
+.attr("width", width+margin.left+margin.right)
+.attr("height", height +margin.top+margin.bottom).append("g")
+.attr("transform", "translate(" +margin.left + "," + margin.top+ ")");
+
+
+
+// got the help from classmates for the structure of processing data
+// you can take partical credits off
+// I made the plot and processed the data myself
+d3.dsv(",", "../Q5/state-year-earthquakes.csv", function(d){
+  return {year: timeFormat(d.year), state: d.state, region: d.region, count: +d.count };
+
+}).then(function(d){
+
+
+  var nest = d3.nest()
+  .key(function(d) {return d.region;})
+  .entries(d); 
+  
+  var regions = nest.map(function(d){return d.key;});
+  
+  function draw(region,i){
+    
+    var data_filter = nest.find(
+    function (d){
+    	return d.key==region;
+    });
+    
+    var data = data_filter.values;
+    var data_new = [ ],
+    data_count=[0,0,0,0,0,0];
+    years = ["2010", "2011", "2012", "2013", "2014", "2015"]
+    
+    data.forEach(function(d) 
+    {
+    	for (var counter=0; counter<6; counter++)
+    	{if (d.year.getTime()==timeFormat(years[counter]).getTime())
+      	{
+    	  	data_count[counter] =data_count[counter]+ d.count;
+      	}
+      }
+    });
+    
+    for (var counter =0; counter < 6; counter ++)
+    {
+    	var inted={
+      	year: timeFormat((2010+counter)), count: data_count[counter], values: data_filter.values , region: region// add the filtered value to the new data structure
+    	};
+    	data_new.push(inted);
+    }
+  yscale.domain([0, 3000]);
+  xscale.domain([d3.min(data_new, d=> d.year), d3.max(data_new, d => d.year)]);
+  
+  var linegenerator= d3.line()
+  .x(function(d){return xscale(d.year);})
+  .y(function(d){return yscale(d.count);});
+  
+  svg
+  .append("path")
+  .data(data_new)
+  .attr("class", "line")
+  .attr("d", linegenerator(data_new))
+  .style("stroke", colors[i]);
+  
+  svg.selectAll("line_circle")
+  .data(data_new)
+  .enter()
+  .append("circle")
+  .attr("class","data-circle")
+  .attr("r", 5)
+  .attr("cx", d => xscale(d.year))
+  .attr('cy', d=> yscale(d.count))
+  .style("fill", colors[i])
+  
+  .on("mouseover", function(d){
+  d3.select(this).attr("r",10);
+  
+  var data= d.values;
+  var year= d.year;
+  
+  var nest= d3.nest()
+  .key(function(d){return d.state;})
+  .entries(data);
+  
+  var states = nest.map(d => d.key);
+  })
+  .on("mouseout", function() { 
+  
+  d3.select(this).attr("r",5);
+  
+  	d3.selectAll(".in").remove()
+  ;});
+  
+  
+  if(i==0)  { svg.append("g")
+  .attr("class", "x axis")
+  .attr("transform", "translate(0," +height + ")")
+  .call(d3.axisBottom(xscale));
+  
+  svg.append("g")
+  .attr("class","y axis")
+  .call(d3.axisLeft(yscale));
+  
+  //Draw the legend
+  
+  var legend = svg.selectAll("circle_legend").data(legend_keys)
+  .enter()
+  .append("g")
+  .attr("class", "legend")
+  .attr("transform" , function(d,i){return "translate(" +width *0.85 +","
+      +(i*17-20) +")";});
+  
+  
+  legend.append("text").text(d => d.key)
+  .attr("transform", "translate(25,4)");
+  
+  legend.append("circle")
+  .attr("fill", d=> d.color)
+  .attr("r",5);
+  
+  
+  }
+  
+  }
+
+  var counter = 0;
+  while (counter<4)
+  {
+  	draw(regions[counter], counter);
+    counter++;
+  }
+});
+
+</script>
+</body>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="../lib/d3-fetch.min.js"></script>
+    <script src="../lib/d3.v5.min.js"></script>
+    <script src="../lib/d3-dsv.min.js"></script>
+    <title>heatmap</title>
+</head>
+<style type="text/css">
+    text.mono{
+        text-align: left;
+        font-family:Consolas,courier;
+        font-size: 11pt;
+    }
+
+    .title{
+        font-size:16pt;
+        fill:black;
+        font-weight:bold;
+    }
+
+    div.tooltip{
+        text-align:center;
+        width: 90px;
+        height: 26px;
+        font:12px sans-serif;
+        background: white;
+    }
+</style>
+
+<body>
+<div class="title"></div>
+<div class="range">
+    <span>Range of</span>
+    <select id="list"></select>
+</div>
+<div id="tooltip"></div>
+<div id="heatmap"></div>
+<div id="legend"></div>
+<script>
+
+    // margin
+    var margin = {top:20, right: 90, bottom:100, left:90};
+    var width = window.innerWidth - margin.left - margin.right;
+    var height =window.innerHeight -margin.bottom - margin.top;
+    var boxLength = height/6;
+  
+    var buckets = 9;
+    var svg = d3.select("#heatmap").append("svg")
+        .attr("width", window.innerWidth)
+        .attr("height", window.innerHeight)
+        .append("g")
+
+    var color = d3.schemeReds[9];
+    var parseTime = d3.timeParse("%Y");
+    var title = 'Visualizing Earthquake Counts by Stat 2000-2015 (M3+)';
+    var yearSet = ["2010","2011","2012","2013","2014","2015"];
+    yearSet.forEach(function(d) {
+        var yearSet = parseTime(yearSet)
+    });
+
+    var StatesSet =[]
+    var CategoryMap = {}
+
+
+    // main function
+    d3.csv("earthquakes.csv",function(data){
+
+        // asked classmates for how to handle the nested data
+        // used classmates' general structure, but processed the data and plots myself
+        // you can take partial points off
+        if (!(data.Category in CategoryMap)){
+            CategoryMap[data.Category] = {};
+        }
+        if (!(data.States in CategoryMap[data.Category])) {
+            (CategoryMap[data.Category])[data.States] = {
+                x: data.States
+            }
+        }
+        yearSet.forEach(function(year) {
+            ((CategoryMap[data.Category])[data.States])[year] = +data[year];
+        });
+    }).then(function(none) {
+
+        CategorySet = Object.keys(CategoryMap).sort();
+
+        // create dropbox
+        var menu = d3.select("#list")
+
+        menu.on("change",function() {
+            d3.select(".title").selectAll("svg").remove()
+            d3.select("#heatmap").selectAll(".xAxis").remove()
+            d3.select("#tooltip").selectAll("svg").remove()
+            d3.select("#heatmap").selectAll("rect").remove()
+            d3.select("#legend").selectAll("svg").remove()
+            dropBox(this.option,d3.select(this).property("value"))
+        })
+
+         menu.selectAll("option")
+         .data(CategorySet)
+         .enter()
+         .append("option")
+         .attr("value",  d => d)
+         .text(d => d);
+
+        dropBox(this.option,"0 to 9")
+        var selectCat = CategorySet[0]
+
+        function dropBox(options,index){
+
+            if (options != null) {
+                d3.selectAll("list").remove()
+                d3.selectAll(".boxes").remove()
+                d3.selectAll("text").remove()
+            }
+
+            selectData = CategoryMap[index]
+            var c_max = d3.max(Object.keys(selectData),function(d) {
+                var temp = 0
+                yearSet.forEach(function(y) {
+                    if (selectData[d][y] > temp) {
+                        temp = selectData[d][y]
+                    }
+                 })
+                return temp;
+             })
+
+            var colorScale = d3.scaleQuantile()
+                .domain([0,c_max])
+                .range(color);
+
+            var yScale = d3.scaleBand()
+                .domain(yearSet)
+                .range([margin.top, height+margin.top]);
+            var yAxis = d3.axisLeft(yScale)
+                .tickFormat(function (d) {return d;});
+            var xScale = d3.scaleBand()
+                .domain(Object.keys(selectData).sort())
+                .range([margin.left, width + margin.left])
+            var xAxis = d3.axisBottom(xScale);
+
+
+            yearSet.forEach(function(y) {
+                var gap = 5             
+                svg.selectAll(".boxes")
+                    .data(Object.values(selectData))
+                    .enter()
+                    .append("rect")
+                    .attr("x",function(d) {
+                        return gap + xScale(d.x)
+                    })
+                    .attr("y",function(d) {
+                        return gap + yScale(y)
+                     })
+                    .attr("width",(width / Object.keys(selectData).length) -gap)
+                    .attr("height",boxLength-gap)
+                    .attr("fill",function(d) {
+                        return colorScale(d[y])
+                     })
+                    .on("mouseover", d => tip.text("Year: " + y + ";   State:  " + d.x + ";   Value: " + d[y] + "."))
+                    .on("mouseleave", d => tip.text(""))
+
+            })
+
+
+                 svg.append("g")
+                    .attr("transform", "translate(0," + (height+margin.top) +")")
+                    .classed("xAxis",true)
+                    .call(xAxis)
+                    .selectAll("text")
+                    .attr("transform","rotate(-30)")
+                    .attr('y',25)
+
+                svg.append("g")
+                    .attr("transform", "translate(" + margin.left + ",0)")
+                    .call(yAxis)
+                    .style("text-anchor", "end");
+
+
+                var min = d3.min(Object.values(selectData),function(d) {
+                var temp = 9999999999999
+                yearSet.forEach(function(y) {
+                    if (d[y] < temp) {
+                        temp = d[y]
+                    }
+                 })
+                return temp
+             })
+             var step = (c_max-min)/9
+             var LGD = d3.range(min,c_max,step);
+
+            var lScale = d3.scaleBand()
+                            .domain(LGD)
+                            .range([margin.left, (width/2) + margin.left])
+
+            var legendSvg = d3.select("body")
+                .select("#legend")
+                .append('svg')
+                .attr('width',(width / 2) + margin.left)
+                .attr('height',100)
+
+
+            legendSvg.selectAll("rect").data(LGD).enter()
+                .append("rect")
+                .attr("width",((width/2) / 9) - 10)
+                .attr("height",30)
+                .attr("x",function(d) { return lScale(d)})
+                .attr("y",0)
+                .style("fill", function (d,i){return color[i]})
+
+            var legend_text = legendSvg.selectAll("legend_text")
+                .data(LGD)
+                .enter();
+
+            legend_text.append("text")
+                .attr("class","mono")
+                .attr("x",function(d) { return lScale(d)})
+                .attr("y",60)
+                .text(function(t) {
+                    return Number.parseInt(t);
+                })
+
+            svg.append("text")
+            .attr("class","legend'slabel")
+            .attr("x", margin.left)
+            .attr("y", height+margin.top+margin.bottom/1.3)
+            .attr("font-weight","bold")
+            .text("Count");
+
+            var tip = d3.select("body")
+                .select("#tooltip")
+                .append("svg")
+                .attr("width",window.innerWidth)
+                .attr("height",100)
+                .append("text")
+                .attr("x",window.innerWidth / 2)
+                .attr("y",50)
+                .attr("text-anchor","middle")
+
+
+            d3.select('body').select('.title')
+                .append('svg')
+                .attr('width',window.innerWidth)
+                .attr('height',100)
+                .append('text')
+                .attr('class','title')
+                .attr('y',50)
+                .attr('x',window.innerWidth/2)
+                .attr('text-anchor','middle')
+                .text(title);
+        }
+
+        dropBox(null,0)
+
+    });
+
+</script>
+</body>
+</html>

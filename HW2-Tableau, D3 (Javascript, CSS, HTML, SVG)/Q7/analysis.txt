@@ -1,0 +1,19 @@
+Comparison of Python and D3.js
+
+1. Ease to develop for developers [40 words]
+Python's syntax is more convenient than JavaScript, so it is easier to code in
+python. D3 requires a lot of familiarities with JavaScript.
+
+2. Ease to maintain the visualization for developers (e.g., difficulty of the maintenance of the product as the requirements change, the data changes, the hosting platform changes, etc.) [40 words]
+D3 is better at interacting with data due to the power of javascript, and is also well suited to graphic animations. Python is only good for numpy data.
+
+3. Usability of visualization developed for end users [40 words]
+D3 can be widely used in websites, while Python has more restrictions or requires
+third-party packages to interact with websites.
+
+4. Scalability of visualization to “large” datasets [40 words]
+Python scales well with Hadoop, Spark, high-performance computing. D3 also scales well with Hadoop, Spark.
+
+5. System requirements to run the visualization (e.g., browsers, OS, software licensing) for end users [40 words]
+Python requires more third-party libraries to interact with browsers, making plots; 
+D3 is more flexible with browsers and web visualization.
